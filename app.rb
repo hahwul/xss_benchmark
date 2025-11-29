@@ -557,6 +557,7 @@ get '/71' do
 end
 
 # Case 72: XSS in body background attribute (legacy)
+# Note: Uses custom HTML template because body background attribute must be on the body element
 get '/72' do
   query = params[:query] || ''
   <<~HTML
@@ -708,6 +709,8 @@ get '/94' do
 end
 
 # Case 95: XSS in plaintext tag (deprecated)
+# Note: The plaintext tag intentionally has no closing tag as it causes all following content
+# to be rendered as plain text. This is the intended behavior of this deprecated element.
 get '/95' do
   query = params[:query] || ''
   html_template('95', "<div>Before plaintext</div><plaintext>#{query}")
@@ -720,6 +723,7 @@ get '/96' do
 end
 
 # Case 97: XSS in frameset onload (legacy)
+# Note: Uses custom HTML template because frameset replaces the body element
 get '/97' do
   query = params[:query] || ''
   <<~HTML
@@ -736,6 +740,7 @@ get '/97' do
 end
 
 # Case 98: XSS in frame src (legacy)
+# Note: Uses custom HTML template because frameset replaces the body element
 get '/98' do
   query = params[:query] || ''
   <<~HTML
