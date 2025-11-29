@@ -7,21 +7,25 @@ require 'tmpdir'
 require 'net/http'
 
 # Check command line arguments
-if ARGV.length < 2
-  puts 'Usage: bench.rb <CMD1> <CMD2>'
-  puts 'Example: bench.rb "dalfox scan http://localhost:3000/10?query= -f json" "nuclei -u http://localhost:3000/10?query= -json"'
+if ARGV.empty?
+  puts 'Usage: bench.rb <CMD1> [CMD2] [CMD3] ...'
+  puts 'Example: bench.rb "dalfox url" "dalfox scan"'
+  puts ''
+  puts 'Commands will be automatically executed for each endpoint with:'
+  puts '  - URL: http://localhost:3000/{endpoint}?query='
+  puts '  - Output: -o {endpoint}_{cmdIndex}'
   exit 1
 end
 
-cmd1 = ARGV[0]
-cmd2 = ARGV[1]
+commands = ARGV.dup
 
 # Create temporary directory for output files
 tmp_dir = File.join(Dir.tmpdir, 'bench_results')
 FileUtils.mkdir_p(tmp_dir)
 
-output_file1 = File.join(tmp_dir, 'result1.json')
-output_file2 = File.join(tmp_dir, 'result2.json')
+# Define endpoints (1-50 as defined in app.rb)
+ENDPOINTS = (1..50).to_a
+BASE_URL = 'http://localhost:3000'
 
 # Start app.rb in background
 puts '[*] Starting app.rb in background...'
@@ -86,34 +90,70 @@ end
 
 # Run command and return detection count
 def run_command(cmd, output_file)
-  full_cmd = "#{cmd} -o #{output_file}"
-  puts "[*] Running: #{full_cmd}"
+  puts "[*] Running: #{cmd}"
 
   # Remove existing output file
   FileUtils.rm_f(output_file)
 
   # Run command
-  system(full_cmd)
+  system(cmd)
 
   # Count results
   count_json_items(output_file)
 end
 
-begin
-  # Run commands
-  puts "\n[*] Running CMD1..."
-  count1 = run_command(cmd1, output_file1)
+# Build full command with URL and output option
+def build_command(cmd_prefix, endpoint, cmd_index, tmp_dir)
+  url = "#{BASE_URL}/#{endpoint}?query="
+  output_file = File.join(tmp_dir, "#{endpoint}_#{cmd_index}.json")
+  full_cmd = "#{cmd_prefix} #{url} -o #{output_file}"
+  [full_cmd, output_file]
+end
 
-  puts "\n[*] Running CMD2..."
-  count2 = run_command(cmd2, output_file2)
+begin
+  # Run all commands for all endpoints
+  # Structure: results[endpoint][cmd_index] = count
+  results = {}
+  totals = Hash.new(0)
+
+  puts "\n[*] Running benchmarks..."
+  ENDPOINTS.each do |endpoint|
+    results[endpoint] = {}
+    commands.each_with_index do |cmd_prefix, cmd_index|
+      cmd_num = cmd_index + 1
+      full_cmd, output_file = build_command(cmd_prefix, endpoint, cmd_num, tmp_dir)
+      count = run_command(full_cmd, output_file)
+      results[endpoint][cmd_num] = count
+      totals[cmd_num] += count
+    end
+  end
 
   # Generate markdown table
   puts "\n[*] Results:"
   puts ''
-  puts '| Command | Detected |'
-  puts '|---------|----------|'
-  puts "| CMD1 | #{count1} |"
-  puts "| CMD2 | #{count2} |"
+
+  # Header row
+  header = ['Endpoint'] + commands.each_with_index.map { |cmd, i| "CMD#{i + 1} (#{cmd})" }
+  puts "| #{header.join(' | ')} |"
+  puts "|#{header.map { '----------' }.join('|')}|"
+
+  # Data rows
+  ENDPOINTS.each do |endpoint|
+    row = [endpoint.to_s]
+    commands.each_with_index do |_, cmd_index|
+      cmd_num = cmd_index + 1
+      row << results[endpoint][cmd_num].to_s
+    end
+    puts "| #{row.join(' | ')} |"
+  end
+
+  # Summary row (totals)
+  total_row = ['**Total**']
+  commands.each_with_index do |_, cmd_index|
+    cmd_num = cmd_index + 1
+    total_row << "**#{totals[cmd_num]}**"
+  end
+  puts "| #{total_row.join(' | ')} |"
   puts ''
 ensure
   # Stop app.rb
@@ -124,7 +164,7 @@ ensure
     # Process already terminated
   end
 
-  # Cleanup temporary files
-  FileUtils.rm_f(output_file1)
-  FileUtils.rm_f(output_file2)
+  # Cleanup temporary files (all scan residual files)
+  puts '[*] Cleaning up temporary files...'
+  FileUtils.rm_rf(tmp_dir)
 end
