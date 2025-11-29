@@ -91,16 +91,39 @@ def count_json_items(file_path)
   end
 end
 
-# Run command and return detection count
+# Format elapsed time in human-readable format (e.g., "2s", "1m15s")
+def format_time(seconds)
+  if seconds >= 60
+    minutes = (seconds / 60).to_i
+    remaining_seconds = (seconds % 60).round(1)
+    if remaining_seconds == remaining_seconds.to_i
+      "#{minutes}m#{remaining_seconds.to_i}s"
+    else
+      "#{minutes}m#{remaining_seconds}s"
+    end
+  else
+    rounded = seconds.round(1)
+    if rounded == rounded.to_i
+      "#{rounded.to_i}s"
+    else
+      "#{rounded}s"
+    end
+  end
+end
+
+# Run command and return detection count and elapsed time
 def run_command(cmd, output_file)
   # Remove existing output file
   FileUtils.rm_f(output_file)
 
-  # Run command (suppress output for parallel execution)
+  # Run command (suppress output for parallel execution) and measure time
+  start_time = Time.now
   system(cmd, out: File::NULL, err: File::NULL)
+  elapsed_time = Time.now - start_time
 
   # Count results
-  count_json_items(output_file)
+  count = count_json_items(output_file)
+  { count: count, time: elapsed_time }
 end
 
 # Build full command with URL and output option
@@ -113,9 +136,9 @@ end
 
 begin
   # Run all commands for all endpoints in parallel
-  # Structure: results[endpoint][cmd_index] = count
+  # Structure: results[endpoint][cmd_index] = { count: N, time: T }
   results = {}
-  totals = Hash.new(0)
+  totals = Hash.new(0)  # Count of detections (O's) per command
   mutex = Mutex.new
   completed = 0
 
@@ -154,11 +177,11 @@ begin
           cmd_num = task[:cmd_num]
 
           full_cmd, output_file = build_command(cmd_prefix, endpoint, cmd_num, tmp_dir)
-          count = run_command(full_cmd, output_file)
+          result = run_command(full_cmd, output_file)
 
           mutex.synchronize do
-            results[endpoint][cmd_num] = count
-            totals[cmd_num] += count
+            results[endpoint][cmd_num] = result
+            totals[cmd_num] += 1 if result[:count] > 0  # Count detections (O's)
             completed += 1
             # Throttle progress updates to every 5% or every 5 tasks
             if completed - last_progress_update >= [total_tasks / 20, 5].min || completed == total_tasks
@@ -201,7 +224,10 @@ begin
     row = [endpoint.to_s]
     commands.each_with_index do |_, cmd_index|
       cmd_num = cmd_index + 1
-      row << results[endpoint][cmd_num].to_s
+      result = results[endpoint][cmd_num]
+      status = result[:count] > 0 ? 'O' : 'X'
+      time_str = format_time(result[:time])
+      row << "#{status} (#{time_str})"
     end
     puts "| #{row.join(' | ')} |"
   end
