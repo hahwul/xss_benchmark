@@ -6,6 +6,9 @@ require 'fileutils'
 require 'tmpdir'
 require 'net/http'
 
+# Number of parallel workers (can be overridden by BENCH_WORKERS environment variable)
+PARALLEL_WORKERS = (ENV['BENCH_WORKERS'] || 10).to_i
+
 # Check command line arguments
 if ARGV.empty?
   puts 'Usage: bench.rb <CMD1> [CMD2] [CMD3] ...'
@@ -90,13 +93,11 @@ end
 
 # Run command and return detection count
 def run_command(cmd, output_file)
-  puts "[*] Running: #{cmd}"
-
   # Remove existing output file
   FileUtils.rm_f(output_file)
 
-  # Run command
-  system(cmd)
+  # Run command (suppress output for parallel execution)
+  system(cmd, out: File::NULL, err: File::NULL)
 
   # Count results
   count_json_items(output_file)
@@ -111,22 +112,80 @@ def build_command(cmd_prefix, endpoint, cmd_index, tmp_dir)
 end
 
 begin
-  # Run all commands for all endpoints
+  # Run all commands for all endpoints in parallel
   # Structure: results[endpoint][cmd_index] = count
   results = {}
   totals = Hash.new(0)
+  mutex = Mutex.new
+  completed = 0
 
-  puts "\n[*] Running benchmarks..."
+  # Build list of all tasks (endpoint, cmd_index pairs)
+  tasks = []
   ENDPOINTS.each do |endpoint|
     results[endpoint] = {}
     commands.each_with_index do |cmd_prefix, cmd_index|
       cmd_num = cmd_index + 1
-      full_cmd, output_file = build_command(cmd_prefix, endpoint, cmd_num, tmp_dir)
-      count = run_command(full_cmd, output_file)
-      results[endpoint][cmd_num] = count
-      totals[cmd_num] += count
+      tasks << { endpoint: endpoint, cmd_prefix: cmd_prefix, cmd_num: cmd_num }
     end
   end
+
+  total_tasks = tasks.size
+  puts "\n[*] Running benchmarks in parallel (#{PARALLEL_WORKERS} workers, #{total_tasks} tasks)..."
+  benchmark_start_time = Time.now
+
+  # Create thread pool and process tasks
+  queue = Queue.new
+  tasks.each { |task| queue << task }
+  # Add sentinel values to signal completion
+  PARALLEL_WORKERS.times { queue << nil }
+
+  thread_errors = []
+  last_progress_update = 0
+
+  threads = PARALLEL_WORKERS.times.map do
+    Thread.new do
+      loop do
+        task = queue.pop
+        break if task.nil? # Sentinel value signals completion
+
+        begin
+          endpoint = task[:endpoint]
+          cmd_prefix = task[:cmd_prefix]
+          cmd_num = task[:cmd_num]
+
+          full_cmd, output_file = build_command(cmd_prefix, endpoint, cmd_num, tmp_dir)
+          count = run_command(full_cmd, output_file)
+
+          mutex.synchronize do
+            results[endpoint][cmd_num] = count
+            totals[cmd_num] += count
+            completed += 1
+            # Throttle progress updates to every 5% or every 5 tasks
+            if completed - last_progress_update >= [total_tasks / 20, 5].min || completed == total_tasks
+              progress = (completed.to_f / total_tasks * 100).round(1)
+              elapsed = Time.now - benchmark_start_time
+              print "\r[*] Progress: #{completed}/#{total_tasks} (#{progress}%) - Elapsed: #{elapsed.round(1)}s"
+              $stdout.flush
+              last_progress_update = completed
+            end
+          end
+        rescue StandardError => e
+          mutex.synchronize { thread_errors << e }
+        end
+      end
+    end
+  end
+
+  threads.each(&:join)
+
+  unless thread_errors.empty?
+    puts "\n[!] Warning: #{thread_errors.size} task(s) encountered errors during execution"
+  end
+
+  benchmark_end_time = Time.now
+  total_elapsed_time = benchmark_end_time - benchmark_start_time
+
+  puts "\n[*] Benchmark completed in #{total_elapsed_time.round(2)} seconds"
 
   # Generate markdown table
   puts "\n[*] Results:"
@@ -154,6 +213,13 @@ begin
     total_row << "**#{totals[cmd_num]}**"
   end
   puts "| #{total_row.join(' | ')} |"
+  puts ''
+
+  # Print timing summary
+  puts "---"
+  puts "**Elapsed Time:** #{total_elapsed_time.round(2)} seconds"
+  puts "**Parallel Workers:** #{PARALLEL_WORKERS}"
+  puts "**Total Tasks:** #{total_tasks}"
   puts ''
 ensure
   # Stop app.rb
