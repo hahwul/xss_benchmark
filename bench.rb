@@ -136,31 +136,52 @@ begin
   # Create thread pool and process tasks
   queue = Queue.new
   tasks.each { |task| queue << task }
+  # Add sentinel values to signal completion
+  PARALLEL_WORKERS.times { queue << nil }
+
+  thread_errors = []
+  last_progress_update = 0
 
   threads = PARALLEL_WORKERS.times.map do
     Thread.new do
-      while (task = queue.pop(true) rescue nil)
-        endpoint = task[:endpoint]
-        cmd_prefix = task[:cmd_prefix]
-        cmd_num = task[:cmd_num]
+      loop do
+        task = queue.pop
+        break if task.nil? # Sentinel value signals completion
 
-        full_cmd, output_file = build_command(cmd_prefix, endpoint, cmd_num, tmp_dir)
-        count = run_command(full_cmd, output_file)
+        begin
+          endpoint = task[:endpoint]
+          cmd_prefix = task[:cmd_prefix]
+          cmd_num = task[:cmd_num]
 
-        mutex.synchronize do
-          results[endpoint][cmd_num] = count
-          totals[cmd_num] += count
-          completed += 1
-          progress = (completed.to_f / total_tasks * 100).round(1)
-          elapsed = Time.now - benchmark_start_time
-          print "\r[*] Progress: #{completed}/#{total_tasks} (#{progress}%) - Elapsed: #{elapsed.round(1)}s"
-          $stdout.flush
+          full_cmd, output_file = build_command(cmd_prefix, endpoint, cmd_num, tmp_dir)
+          count = run_command(full_cmd, output_file)
+
+          mutex.synchronize do
+            results[endpoint][cmd_num] = count
+            totals[cmd_num] += count
+            completed += 1
+            # Throttle progress updates to every 5% or every 5 tasks
+            if completed - last_progress_update >= [total_tasks / 20, 5].min || completed == total_tasks
+              progress = (completed.to_f / total_tasks * 100).round(1)
+              elapsed = Time.now - benchmark_start_time
+              print "\r[*] Progress: #{completed}/#{total_tasks} (#{progress}%) - Elapsed: #{elapsed.round(1)}s"
+              $stdout.flush
+              last_progress_update = completed
+            end
+          end
+        rescue StandardError => e
+          mutex.synchronize { thread_errors << e }
         end
       end
     end
   end
 
   threads.each(&:join)
+
+  unless thread_errors.empty?
+    puts "\n[!] Warning: #{thread_errors.size} task(s) encountered errors during execution"
+  end
+
   benchmark_end_time = Time.now
   total_elapsed_time = benchmark_end_time - benchmark_start_time
 
