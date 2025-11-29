@@ -240,6 +240,10 @@ These endpoints have various protection/filter mechanisms. The challenge is to b
 | GET /199?query= | Recursive script removal | Recursively removes script tags |
 | GET /200?query= | Comprehensive WAF | Full WAF-style protection |
 
+## Note
+
+This project is similar to [dalfox/xssmaze](https://github.com/hahwul/xssmaze). However, since xssmaze's structure was inconvenient for benchmarking different versions of dalfox, I created this temporarily. I plan to apply this approach to xssmaze in the future. The porting should be straightforward since Ruby and Crystal are quite similar.
+
 ## License
 
 MIT License
