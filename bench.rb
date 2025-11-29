@@ -26,8 +26,8 @@ commands = ARGV.dup
 tmp_dir = File.join(Dir.tmpdir, 'bench_results')
 FileUtils.mkdir_p(tmp_dir)
 
-# Define endpoints (1-50 as defined in app.rb)
-ENDPOINTS = (1..50).to_a
+# Define endpoints (1-200 as defined in app.rb)
+ENDPOINTS = (1..200).to_a
 BASE_URL = 'http://localhost:3000'
 
 # Start app.rb in background
