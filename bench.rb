@@ -107,7 +107,7 @@ end
 def build_command(cmd_prefix, endpoint, cmd_index, tmp_dir)
   url = "#{BASE_URL}/#{endpoint}?query="
   output_file = File.join(tmp_dir, "#{endpoint}_#{cmd_index}.json")
-  full_cmd = "#{cmd_prefix} #{url} -o #{output_file}"
+  full_cmd = "#{cmd_prefix} #{url} --format json -o #{output_file}"
   [full_cmd, output_file]
 end
 
