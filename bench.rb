@@ -7,7 +7,7 @@ require 'tmpdir'
 require 'net/http'
 
 # Number of parallel workers (can be overridden by BENCH_WORKERS environment variable)
-PARALLEL_WORKERS = (ENV['BENCH_WORKERS'] || 10).to_i
+PARALLEL_WORKERS = (ENV['BENCH_WORKERS'] || 1).to_i
 
 # Check command line arguments
 if ARGV.empty?
