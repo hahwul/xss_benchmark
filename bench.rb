@@ -5,6 +5,7 @@ require 'open3'
 require 'fileutils'
 require 'tmpdir'
 require 'net/http'
+require 'shellwords'
 
 # Number of parallel workers (can be overridden by BENCH_WORKERS environment variable)
 PARALLEL_WORKERS = (ENV['BENCH_WORKERS'] || 1).to_i
@@ -126,7 +127,10 @@ end
 def build_command(cmd_prefix, endpoint, cmd_index, tmp_dir)
   url = "#{BASE_URL}/#{endpoint}?query="
   output_file = File.join(tmp_dir, "#{endpoint}_#{cmd_index}.json")
-  full_cmd = "#{cmd_prefix} #{url} --format json -o #{output_file}"
+  # Properly escape URL and output file path for shell execution
+  escaped_url = Shellwords.escape(url)
+  escaped_output = Shellwords.escape(output_file)
+  full_cmd = "#{cmd_prefix} #{escaped_url} --format json -o #{escaped_output}"
   [full_cmd, output_file]
 end
 
