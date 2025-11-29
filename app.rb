@@ -25,7 +25,7 @@ end
 
 # Index page listing all endpoints
 get '/' do
-  endpoints = (1..20).map do |i|
+  endpoints = (1..50).map do |i|
     "<li><a href='/#{i}?query=test'>Endpoint #{i}</a></li>"
   end.join("\n")
 
@@ -191,4 +191,239 @@ end
 get '/20' do
   query = params[:query] || ''
   html_template('20', "<form action=\"#{query}\"><input type=\"submit\" value=\"Submit\"></form>")
+end
+
+# Case 21: XSS in body onload event
+get '/21' do
+  query = params[:query] || ''
+  <<~HTML
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>21</title>
+    </head>
+    <body onload="console.log('#{query}')">
+      <h1>XSS Benchmark - Case 21</h1>
+      <p>Body onload event</p>
+      <hr>
+      <a href="/">Back to Index</a>
+    </body>
+    </html>
+  HTML
+end
+
+# Case 22: XSS in onmouseover event handler
+get '/22' do
+  query = params[:query] || ''
+  html_template('22', "<div onmouseover=\"alert('#{query}')\">Hover over me</div>")
+end
+
+# Case 23: XSS in onfocus event handler
+get '/23' do
+  query = params[:query] || ''
+  html_template('23', "<input type=\"text\" onfocus=\"alert('#{query}')\" value=\"Click me\">")
+end
+
+# Case 24: XSS in oninput event handler
+get '/24' do
+  query = params[:query] || ''
+  html_template('24', "<input type=\"text\" oninput=\"console.log('#{query}')\">")
+end
+
+# Case 25: XSS in onchange event handler
+get '/25' do
+  query = params[:query] || ''
+  html_template('25', "<select onchange=\"console.log('#{query}')\"><option>Choose</option><option>Option 1</option></select>")
+end
+
+# Case 26: XSS in JavaScript template literal
+get '/26' do
+  query = params[:query] || ''
+  html_template('26', "<script>var msg = `Hello #{query}`;</script><p>Check console</p>")
+end
+
+# Case 27: XSS in innerHTML context (DOM XSS simulation)
+get '/27' do
+  query = params[:query] || ''
+  html_template('27', "<div id=\"target\"></div><script>document.getElementById('target').innerHTML = '#{query}';</script>")
+end
+
+# Case 28: XSS in document.write context (DOM XSS simulation)
+get '/28' do
+  query = params[:query] || ''
+  html_template('28', "<script>document.write('#{query}');</script>")
+end
+
+# Case 29: XSS in HTML comment
+get '/29' do
+  query = params[:query] || ''
+  html_template('29', "<!-- User comment: #{query} --><p>Check page source for comment</p>")
+end
+
+# Case 30: XSS in style tag
+get '/30' do
+  query = params[:query] || ''
+  html_template('30', "<style>.test { color: #{query}; }</style><p class=\"test\">Styled text</p>")
+end
+
+# Case 31: XSS in base tag href
+get '/31' do
+  query = params[:query] || ''
+  <<~HTML
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <base href="#{query}">
+      <title>31</title>
+    </head>
+    <body>
+      <h1>XSS Benchmark - Case 31</h1>
+      <p>Base tag injection</p>
+      <hr>
+      <a href="/">Back to Index</a>
+    </body>
+    </html>
+  HTML
+end
+
+# Case 32: XSS in link href (stylesheet)
+get '/32' do
+  query = params[:query] || ''
+  <<~HTML
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <link rel="stylesheet" href="#{query}">
+      <title>32</title>
+    </head>
+    <body>
+      <h1>XSS Benchmark - Case 32</h1>
+      <p>Link stylesheet injection</p>
+      <hr>
+      <a href="/">Back to Index</a>
+    </body>
+    </html>
+  HTML
+end
+
+# Case 33: XSS in script src attribute
+get '/33' do
+  query = params[:query] || ''
+  <<~HTML
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <script src="#{query}"></script>
+      <title>33</title>
+    </head>
+    <body>
+      <h1>XSS Benchmark - Case 33</h1>
+      <p>Script src injection</p>
+      <hr>
+      <a href="/">Back to Index</a>
+    </body>
+    </html>
+  HTML
+end
+
+# Case 34: XSS in img srcset attribute
+get '/34' do
+  query = params[:query] || ''
+  html_template('34', "<img srcset=\"#{query}\" alt=\"image\">")
+end
+
+# Case 35: XSS in video poster attribute
+get '/35' do
+  query = params[:query] || ''
+  html_template('35', "<video poster=\"#{query}\" controls><source src=\"movie.mp4\"></video>")
+end
+
+# Case 36: XSS in video src attribute
+get '/36' do
+  query = params[:query] || ''
+  html_template('36', "<video src=\"#{query}\" controls></video>")
+end
+
+# Case 37: XSS in audio src attribute
+get '/37' do
+  query = params[:query] || ''
+  html_template('37', "<audio src=\"#{query}\" controls></audio>")
+end
+
+# Case 38: XSS in source src attribute
+get '/38' do
+  query = params[:query] || ''
+  html_template('38', "<video controls><source src=\"#{query}\"></video>")
+end
+
+# Case 39: XSS in track src attribute
+get '/39' do
+  query = params[:query] || ''
+  html_template('39', "<video controls><track src=\"#{query}\" kind=\"subtitles\"></video>")
+end
+
+# Case 40: XSS in formaction attribute
+get '/40' do
+  query = params[:query] || ''
+  html_template('40', "<form><button formaction=\"#{query}\" type=\"submit\">Submit</button></form>")
+end
+
+# Case 41: XSS in iframe srcdoc attribute
+get '/41' do
+  query = params[:query] || ''
+  html_template('41', "<iframe srcdoc=\"#{query}\" width=\"300\" height=\"200\"></iframe>")
+end
+
+# Case 42: XSS in SVG onload event
+get '/42' do
+  query = params[:query] || ''
+  html_template('42', "<svg onload=\"console.log('#{query}')\"><circle cx=\"50\" cy=\"50\" r=\"40\"/></svg>")
+end
+
+# Case 43: XSS in SVG href (xlink:href)
+get '/43' do
+  query = params[:query] || ''
+  html_template('43', "<svg><a href=\"#{query}\"><text x=\"10\" y=\"20\">Click me</text></a></svg>")
+end
+
+# Case 44: XSS in MathML context
+get '/44' do
+  query = params[:query] || ''
+  html_template('44', "<math><mtext>#{query}</mtext></math>")
+end
+
+# Case 45: XSS in details/summary tag
+get '/45' do
+  query = params[:query] || ''
+  html_template('45', "<details ontoggle=\"console.log('#{query}')\"><summary>Click to expand</summary><p>Content</p></details>")
+end
+
+# Case 46: XSS in marquee tag
+get '/46' do
+  query = params[:query] || ''
+  html_template('46', "<marquee onstart=\"console.log('#{query}')\">Scrolling text</marquee>")
+end
+
+# Case 47: XSS in contenteditable attribute
+get '/47' do
+  query = params[:query] || ''
+  html_template('47', "<div contenteditable=\"true\" onfocus=\"console.log('#{query}')\">Edit this text</div>")
+end
+
+# Case 48: XSS in autofocus attribute
+get '/48' do
+  query = params[:query] || ''
+  html_template('48', "<input autofocus onfocus=\"console.log('#{query}')\">")
+end
+
+# Case 49: XSS in JSON context
+get '/49' do
+  query = params[:query] || ''
+  html_template('49', "<script>var config = {\"name\": \"#{query}\"};</script><p>Check console</p>")
+end
+
+# Case 50: XSS in noscript tag
+get '/50' do
+  query = params[:query] || ''
+  html_template('50', "<noscript>#{query}</noscript><p>Enable JavaScript to hide content</p>")
 end
