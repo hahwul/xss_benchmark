@@ -3,6 +3,8 @@
 require 'json'
 require 'open3'
 require 'fileutils'
+require 'tmpdir'
+require 'net/http'
 
 # Check command line arguments
 if ARGV.length < 2
@@ -15,7 +17,7 @@ cmd1 = ARGV[0]
 cmd2 = ARGV[1]
 
 # Create temporary directory for output files
-tmp_dir = '/tmp/bench_results'
+tmp_dir = File.join(Dir.tmpdir, 'bench_results')
 FileUtils.mkdir_p(tmp_dir)
 
 output_file1 = File.join(tmp_dir, 'result1.json')
@@ -23,12 +25,33 @@ output_file2 = File.join(tmp_dir, 'result2.json')
 
 # Start app.rb in background
 puts '[*] Starting app.rb in background...'
-app_pid = spawn('bundle exec ruby app.rb', chdir: File.dirname(__FILE__), out: '/dev/null', err: '/dev/null')
+app_pid = spawn('bundle exec ruby app.rb', chdir: File.dirname(__FILE__), out: File::NULL, err: File::NULL)
 Process.detach(app_pid)
 
-# Wait for server to start
-puts '[*] Waiting for server to start...'
-sleep 3
+# Wait for server to start with health check
+def wait_for_server(host = 'localhost', port = 3000, timeout = 30)
+  puts '[*] Waiting for server to start...'
+  start_time = Time.now
+
+  loop do
+    begin
+      Net::HTTP.get_response(URI("http://#{host}:#{port}/"))
+      puts '[*] Server is ready!'
+      return true
+    rescue Errno::ECONNREFUSED, Errno::EADDRNOTAVAIL, SocketError
+      if Time.now - start_time > timeout
+        puts '[!] Timeout waiting for server to start'
+        return false
+      end
+      sleep 0.5
+    end
+  end
+end
+
+unless wait_for_server
+  puts '[!] Failed to start server. Exiting.'
+  exit 1
+end
 
 # Count items in JSON array from file
 def count_json_items(file_path)
