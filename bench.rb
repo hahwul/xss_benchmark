@@ -93,21 +93,17 @@ end
 
 # Format elapsed time in human-readable format (e.g., "2s", "1m15s")
 def format_time(seconds)
+  format_seconds = ->(s) {
+    rounded = s.round(1)
+    rounded % 1 == 0 ? "#{rounded.to_i}s" : "#{rounded}s"
+  }
+
   if seconds >= 60
     minutes = (seconds / 60).to_i
-    remaining_seconds = (seconds % 60).round(1)
-    if remaining_seconds == remaining_seconds.to_i
-      "#{minutes}m#{remaining_seconds.to_i}s"
-    else
-      "#{minutes}m#{remaining_seconds}s"
-    end
+    remaining_seconds = seconds % 60
+    "#{minutes}m#{format_seconds.call(remaining_seconds)}"
   else
-    rounded = seconds.round(1)
-    if rounded == rounded.to_i
-      "#{rounded.to_i}s"
-    else
-      "#{rounded}s"
-    end
+    format_seconds.call(seconds)
   end
 end
 
