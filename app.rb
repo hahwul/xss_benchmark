@@ -237,6 +237,7 @@ get '/25' do
 end
 
 # Case 26: XSS in JavaScript template literal
+# Note: Template literals use backticks which can be tricky to escape
 get '/26' do
   query = params[:query] || ''
   html_template('26', "<script>var msg = `Hello #{query}`;</script><p>Check console</p>")
@@ -377,7 +378,7 @@ end
 # Case 42: XSS in SVG onload event
 get '/42' do
   query = params[:query] || ''
-  html_template('42', "<svg onload=\"console.log('#{query}')\"><circle cx=\"50\" cy=\"50\" r=\"40\"/></svg>")
+  html_template('42', "<svg onload=\"alert('#{query}')\"><circle cx=\"50\" cy=\"50\" r=\"40\"/></svg>")
 end
 
 # Case 43: XSS in SVG href (xlink:href)
@@ -398,25 +399,26 @@ get '/45' do
   html_template('45', "<details ontoggle=\"console.log('#{query}')\"><summary>Click to expand</summary><p>Content</p></details>")
 end
 
-# Case 46: XSS in marquee tag
+# Case 46: XSS in marquee tag (deprecated HTML element, included for legacy testing)
 get '/46' do
   query = params[:query] || ''
-  html_template('46', "<marquee onstart=\"console.log('#{query}')\">Scrolling text</marquee>")
+  html_template('46', "<marquee onstart=\"alert('#{query}')\">Scrolling text</marquee>")
 end
 
 # Case 47: XSS in contenteditable attribute
 get '/47' do
   query = params[:query] || ''
-  html_template('47', "<div contenteditable=\"true\" onfocus=\"console.log('#{query}')\">Edit this text</div>")
+  html_template('47', "<div contenteditable=\"true\" onfocus=\"alert('#{query}')\">Edit this text</div>")
 end
 
 # Case 48: XSS in autofocus attribute
 get '/48' do
   query = params[:query] || ''
-  html_template('48', "<input autofocus onfocus=\"console.log('#{query}')\">")
+  html_template('48', "<input autofocus onfocus=\"alert('#{query}')\">")
 end
 
 # Case 49: XSS in JSON context
+# Note: Unescaped quotes in query can break JSON parsing, demonstrating injection risk
 get '/49' do
   query = params[:query] || ''
   html_template('49', "<script>var config = {\"name\": \"#{query}\"};</script><p>Check console</p>")
