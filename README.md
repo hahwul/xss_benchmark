@@ -24,6 +24,31 @@ bundle exec ruby app.rb
 
 The server will start on `http://0.0.0.0:3000`.
 
+### Parallel Request Handling
+
+The server is configured to handle parallel/concurrent requests efficiently using Puma. This is useful when running parallel scanning tools.
+
+For optimal parallel performance (cluster mode with multiple workers), use:
+
+```bash
+bundle exec puma -C config/puma.rb
+```
+
+Default configuration:
+- **Workers**: 2 processes
+- **Threads**: 5-16 per worker
+- **Total concurrent capacity**: 32+ requests
+
+You can customize these settings with environment variables:
+
+```bash
+# Custom thread configuration
+PUMA_MIN_THREADS=8 PUMA_MAX_THREADS=32 bundle exec puma -C config/puma.rb
+
+# Custom worker count
+PUMA_WORKERS=4 bundle exec puma -C config/puma.rb
+```
+
 ## Endpoints
 
 ### Basic XSS Endpoints (1-100)

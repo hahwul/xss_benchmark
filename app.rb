@@ -5,6 +5,12 @@ require 'sinatra'
 set :bind, '0.0.0.0'
 set :port, 3000
 
+# Configure server for parallel request handling
+# Puma is used with configurable thread settings for better concurrent performance
+# See config/puma.rb for full cluster mode configuration
+set :server, :puma
+set :server_settings, { Silent: true }
+
 # Helper for HTML template
 def html_template(title, content)
   <<~HTML
