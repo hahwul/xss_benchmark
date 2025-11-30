@@ -31,9 +31,9 @@ FileUtils.mkdir_p(tmp_dir)
 ENDPOINTS = (1..200).to_a
 BASE_URL = 'http://localhost:3000'
 
-# Start app.rb in background
-puts '[*] Starting app.rb in background...'
-app_pid = spawn('bundle exec ruby app.rb', chdir: File.dirname(__FILE__), out: File::NULL, err: File::NULL)
+# Start Puma server in background with proper configuration
+puts '[*] Starting Puma server in background...'
+app_pid = spawn('bundle exec puma -C config/puma.rb', chdir: File.dirname(__FILE__), out: File::NULL, err: File::NULL)
 Process.detach(app_pid)
 
 # Wait for server to start with health check
@@ -248,8 +248,8 @@ begin
   puts "**Total Tasks:** #{total_tasks}"
   puts ''
 ensure
-  # Stop app.rb
-  puts '[*] Stopping app.rb...'
+  # Stop Puma server
+  puts '[*] Stopping Puma server...'
   begin
     Process.kill('TERM', app_pid)
   rescue Errno::ESRCH
