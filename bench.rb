@@ -61,35 +61,39 @@ unless wait_for_server
   exit 1
 end
 
-# Count items in JSON array from file
+# Count items in JSON array from file and check for verified results (type: "V")
+# Returns { count: N, has_verified: boolean }
 def count_json_items(file_path)
-  return 0 unless File.exist?(file_path)
+  result = { count: 0, has_verified: false }
+  return result unless File.exist?(file_path)
 
   content = File.read(file_path).strip
-  return 0 if content.empty?
+  return result if content.empty?
 
   begin
     # Try to parse as JSON array
     data = JSON.parse(content)
     if data.is_a?(Array)
-      data.length
+      result[:count] = data.length
+      result[:has_verified] = data.any? { |item| item.is_a?(Hash) && item['type'] == 'V' }
     else
-      1
+      result[:count] = 1
+      result[:has_verified] = data.is_a?(Hash) && data['type'] == 'V'
     end
   rescue JSON::ParserError
     # If not valid JSON array, try to count JSON lines (JSONL format)
     lines = content.split("\n").reject(&:empty?)
-    count = 0
     lines.each do |line|
       begin
-        JSON.parse(line)
-        count += 1
+        item = JSON.parse(line)
+        result[:count] += 1
+        result[:has_verified] = true if item.is_a?(Hash) && item['type'] == 'V'
       rescue JSON::ParserError
         # Skip invalid lines
       end
     end
-    count
   end
+  result
 end
 
 # Format elapsed time in human-readable format (e.g., "2s", "1m15s")
@@ -108,7 +112,7 @@ def format_time(seconds)
   end
 end
 
-# Run command and return detection count and elapsed time
+# Run command and return detection count, verification status, and elapsed time
 def run_command(cmd, output_file)
   # Remove existing output file
   FileUtils.rm_f(output_file)
@@ -118,9 +122,9 @@ def run_command(cmd, output_file)
   system(cmd, out: File::NULL, err: File::NULL)
   elapsed_time = Time.now - start_time
 
-  # Count results
-  count = count_json_items(output_file)
-  { count: count, time: elapsed_time }
+  # Count results and check for verified results
+  json_result = count_json_items(output_file)
+  { count: json_result[:count], has_verified: json_result[:has_verified], time: elapsed_time }
 end
 
 # Build full command with URL and output option
@@ -136,9 +140,10 @@ end
 
 begin
   # Run all commands for all endpoints in parallel
-  # Structure: results[endpoint][cmd_index] = { count: N, time: T }
+  # Structure: results[endpoint][cmd_index] = { count: N, has_verified: bool, time: T }
   results = {}
-  totals = Hash.new(0)  # Count of detections (O's) per command
+  detection_totals = Hash.new(0)  # Count of detections (O's) per command
+  verified_totals = Hash.new(0)   # Count of verified results (type: V) per command
   mutex = Mutex.new
   completed = 0
 
@@ -181,7 +186,8 @@ begin
 
           mutex.synchronize do
             results[endpoint][cmd_num] = result
-            totals[cmd_num] += 1 if result[:count] > 0  # Count detections (O's)
+            detection_totals[cmd_num] += 1 if result[:count] > 0  # Count detections (O's)
+            verified_totals[cmd_num] += 1 if result[:has_verified]  # Count verified results (V's)
             completed += 1
             # Throttle progress updates to every 5% or every 5 tasks
             if completed - last_progress_update >= [total_tasks / 20, 5].min || completed == total_tasks
@@ -214,8 +220,12 @@ begin
   puts "\n[*] Results:"
   puts ''
 
-  # Header row
-  header = ['Endpoint'] + commands.each_with_index.map { |cmd, i| "CMD#{i + 1} (#{cmd})" }
+  # Header row - each command has two sub-columns: Detected and Verified (type: V)
+  header = ['Endpoint']
+  commands.each_with_index do |cmd, i|
+    header << "CMD#{i + 1} Detected"
+    header << "CMD#{i + 1} Verified"
+  end
   puts "| #{header.join(' | ')} |"
   puts "|#{header.map { '----------' }.join('|')}|"
 
@@ -225,9 +235,11 @@ begin
     commands.each_with_index do |_, cmd_index|
       cmd_num = cmd_index + 1
       result = results[endpoint][cmd_num]
-      status = result[:count] > 0 ? 'O' : 'X'
+      detected_status = result[:count] > 0 ? 'O' : 'X'
+      verified_status = result[:has_verified] ? 'O' : 'X'
       time_str = format_time(result[:time])
-      row << "#{status} (#{time_str})"
+      row << "#{detected_status} (#{time_str})"
+      row << verified_status
     end
     puts "| #{row.join(' | ')} |"
   end
@@ -236,7 +248,8 @@ begin
   total_row = ['**Total**']
   commands.each_with_index do |_, cmd_index|
     cmd_num = cmd_index + 1
-    total_row << "**#{totals[cmd_num]}**"
+    total_row << "**#{detection_totals[cmd_num]}**"
+    total_row << "**#{verified_totals[cmd_num]}**"
   end
   puts "| #{total_row.join(' | ')} |"
   puts ''
