@@ -220,7 +220,7 @@ begin
   puts "\n[*] Results:"
   puts ''
 
-  # Header row - each command has two sub-columns: Detected and Verified(type:V)
+  # Header row - each command has two sub-columns: Detected and Verified (type: V)
   header = ['Endpoint']
   commands.each_with_index do |cmd, i|
     header << "CMD#{i + 1} Detected"
