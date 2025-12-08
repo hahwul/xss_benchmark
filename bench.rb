@@ -134,7 +134,8 @@ def build_command(cmd_prefix, endpoint, cmd_index, tmp_dir)
   # Properly escape URL and output file path for shell execution
   escaped_url = Shellwords.escape(url)
   escaped_output = Shellwords.escape(output_file)
-  full_cmd = "#{cmd_prefix} #{escaped_url} --format json -o #{escaped_output}"
+  # Only test query parameter, not path-based XSS
+  full_cmd = "#{cmd_prefix} #{escaped_url} --format json -o #{escaped_output} --param query"
   [full_cmd, output_file]
 end
 
