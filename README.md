@@ -49,6 +49,34 @@ PUMA_MIN_THREADS=8 PUMA_MAX_THREADS=32 bundle exec puma -C config/puma.rb
 PUMA_WORKERS=4 bundle exec puma -C config/puma.rb
 ```
 
+### Benchmarking with bench.rb
+
+The `bench.rb` script automates testing of XSS scanners against all endpoints. It automatically:
+- Tests only the `query` parameter (not path-based XSS)
+- Runs commands in parallel for faster execution
+- Generates comparison tables
+
+**Important**: This benchmark is designed to test **query parameter XSS only**. The script uses `--param query` to ensure scanners test only the query parameter and not path-based injection, preventing unintended false positives.
+
+Example usage:
+
+```bash
+bundle exec ruby bench.rb "dalfox url" "dalfox scan"
+```
+
+The script will:
+1. Start the Puma server automatically
+2. Test all 200 endpoints with each command
+3. Generate a markdown table comparing results
+4. Clean up temporary files
+
+Customize parallel execution:
+
+```bash
+# Run with 20 parallel workers
+BENCH_WORKERS=20 bundle exec ruby bench.rb "dalfox url"
+```
+
 ## Endpoints
 
 ### Basic XSS Endpoints (1-100)
